@@ -43,7 +43,7 @@
             color: #FFD700; /* Gold color for headers */
             text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-
+        
         .card-grid {
             display: flex;
             flex-wrap: wrap;
@@ -153,11 +153,51 @@
             color: #e0e0e0;
             transition: background-color 0.3s, color 0.3s;
         }
+        
+        .loader-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #121212;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            transition: opacity 0.5s ease-out;
+            opacity: 1;
+        }
+
+        .loader-container.d-none {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+            color: #FFD700;
+            margin-bottom: 1rem;
+        }
+
     </style>
 </head>
 <body class="bg-dark text-light">
 
-    <div id="game-container" class="game-container">
+    <div id="loader" class="loader-container">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p>Loading game...</p>
+    </div>
+
+    <div id="game-container" class="game-container d-none">
+        <div class="d-flex justify-content-end w-100 position-fixed top-0 end-0 p-3" style="max-width: 900px; left: 50%; transform: translateX(-50%); z-index: 100;">
+            <button id="new-game-button-top" class="btn btn-secondary">New Game</button>
+        </div>
+
         <!-- Main title -->
         <h1 class="mb-2 fs-2 fs-md-1">Kallanum Policum</h1>
         <p class="text-center text-secondary mb-4">A game of King, Police, Thief, and Queen!</p>
@@ -231,6 +271,17 @@
                 </div>
             </div>
         </div>
+
+        <!-- Resume Game Confirmation Modal -->
+        <div id="resume-modal" class="modal-custom d-none">
+            <div class="modal-content-custom">
+                <p id="resume-text" class="fs-5 fw-bold mb-4">A saved game was found. Would you like to resume?</p>
+                <div class="d-flex justify-content-center gap-3">
+                    <button id="resume-yes-button" class="btn btn-primary">Yes</button>
+                    <button id="resume-no-button" class="btn btn-secondary">No</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Bootstrap JS Bundle -->
@@ -240,6 +291,7 @@
         // Global game state stored in memory
         let gameState = {};
         let currentPlayerIndex = 0;
+        const localStorageKey = 'kallanumPolisumGameState';
 
         // UI elements
         const setupView = document.getElementById('setup-view');
@@ -248,8 +300,12 @@
         const scoreboardView = document.getElementById('scoreboard-view');
         const messageModal = document.getElementById('message-modal');
         const confirmModal = document.getElementById('confirm-modal');
+        const resumeModal = document.getElementById('resume-modal');
         const playerTurnInfo = document.getElementById('player-turn-info');
         const guessPrompt = document.getElementById('guess-prompt');
+        const loader = document.getElementById('loader');
+        const gameContainer = document.getElementById('game-container');
+
 
         const playerCountInput = document.getElementById('playerCount');
         const totalRoundsInput = document.getElementById('totalRounds');
@@ -258,6 +314,7 @@
         const submitGuessButton = document.getElementById('submit-guess-button');
         const nextRoundButton = document.getElementById('next-round-button');
         const newGameButton = document.getElementById('new-game-button');
+        const newGameTopButton = document.getElementById('new-game-button-top');
         const gameBoard = document.getElementById('game-board');
         const playerInputsDiv = document.getElementById('player-inputs');
         const guessSelect = document.getElementById('guess-select');
@@ -287,6 +344,7 @@
         function hideModal() {
             messageModal.classList.add('d-none');
             confirmModal.classList.add('d-none');
+            resumeModal.classList.add('d-none');
         }
 
         function switchView(viewId) {
@@ -318,10 +376,9 @@
         }
 
         function assignCharacters(playerCount) {
-            const characters = [];
-
+            
             // Base roles and points
-            const roles = [
+            const baseRoles = [
                 { role: 'King', points: 1000 },
                 { role: 'Police', points: 500 },
                 { role: 'Thief', points: 0 }
@@ -329,24 +386,24 @@
 
             // Add Queen for 4 players
             if (playerCount >= 4) {
-                roles.push({ role: 'Queen', points: 900 });
+                baseRoles.push({ role: 'Queen', points: 900 });
             }
 
             // Add Minister for 5 players
             if (playerCount >= 5) {
-                roles.push({ role: 'Minister', points: 800 });
+                baseRoles.push({ role: 'Minister', points: 800 });
             }
 
             // Add Soldier for more than 5 players
             if (playerCount > 5) {
-                const numSoldiers = playerCount - roles.length;
+                const numSoldiers = playerCount - baseRoles.length;
                 for (let i = 0; i < numSoldiers; i++) {
-                    roles.push({ role: 'Soldier', points: 700 });
+                    baseRoles.push({ role: 'Soldier', points: 700 });
                 }
             }
             
-            shuffleArray(roles);
-            return roles;
+            shuffleArray(baseRoles);
+            return baseRoles;
         }
 
         function renderCards() {
@@ -443,6 +500,31 @@
                 newGameButton.classList.add('d-none');
             }
         }
+        
+        function saveGameState() {
+            localStorage.setItem(localStorageKey, JSON.stringify(gameState));
+        }
+
+        function loadGameState() {
+            const savedState = localStorage.getItem(localStorageKey);
+            if (savedState) {
+                try {
+                    gameState = JSON.parse(savedState);
+                    return true;
+                } catch (e) {
+                    console.error("Error loading game state from localStorage:", e);
+                    localStorage.removeItem(localStorageKey); // Clear corrupted state
+                    return false;
+                }
+            }
+            return false;
+        }
+
+        function clearGameState() {
+            localStorage.removeItem(localStorageKey);
+            gameState = {};
+            currentPlayerIndex = 0;
+        }
 
         function startNewGame() {
             const playerCount = parseInt(playerCountInput.value);
@@ -488,6 +570,7 @@
             currentPlayerIndex = 0;
             gameState.guessResult = null;
             
+            saveGameState();
             updateUI();
             
             showModal(`Round ${gameState.round}. Pass the phone to ${gameState.players[currentPlayerIndex].name} to reveal their card. Only they should look!`);
@@ -506,12 +589,14 @@
                     card.classList.remove('is-flipped');
                     player.isRevealed = false;
                     currentPlayerIndex++;
+                    saveGameState();
                     updateUI();
                     if (currentPlayerIndex < gameState.players.length) {
                         showModal(`OK, now pass the phone to ${gameState.players[currentPlayerIndex].name}.`);
                     } else {
                         // All players have revealed, now start the guessing phase
                         gameState.state = 'guessing';
+                        saveGameState();
                         updateUI();
                         const police = gameState.players.find(p => p.character.role === 'Police');
                         showModal(`All players have seen their roles. Pass the phone to the Police (${police.name}) to make a guess.`);
@@ -567,12 +652,18 @@
             });
 
             gameState.state = 'round_over';
+            saveGameState();
             updateUI();
 
             showModal(gameState.guessResult, false, isCorrectGuess);
         }
 
         function updateUI() {
+            setupView.classList.add('d-none');
+            namesView.classList.add('d-none');
+            gamePlayView.classList.add('d-none');
+            scoreboardView.classList.add('d-none');
+
             playerTurnInfo.classList.add('d-none');
             document.getElementById('guess-view').classList.add('d-none');
             
@@ -631,22 +722,48 @@
                     showModal("Game Over! All rounds have been played.");
                     switchView('scoreboard-view');
                     renderScores();
+                    clearGameState();
                     break;
                 default:
                     console.log("Unknown game state:", gameState.state);
                     break;
             }
         }
-
+        
         // Event listeners
         document.getElementById('modal-ok-button').onclick = hideModal;
-        document.getElementById('new-game-button').onclick = () => showModal("Are you sure you want to start a new game? This will reset the scores.", true);
+        
+        // "New Game" button from the scoreboard
+        newGameButton.onclick = () => showModal("Are you sure you want to start a new game? This will reset the scores.", true);
+        
+        // "New Game" button from the top of the page
+        newGameTopButton.onclick = () => showModal("Are you sure you want to start a new game? This will reset the scores.", true);
+
         document.getElementById('confirm-yes-button').onclick = () => {
              hideModal();
-             switchView('setup-view');
+             clearGameState(); // Clear state before starting a new game
+             gameState.state = 'setup';
+             updateUI();
+             gameContainer.classList.remove('d-none');
         }
         document.getElementById('confirm-no-button').onclick = hideModal;
         
+        // Resume game button
+        document.getElementById('resume-yes-button').onclick = () => {
+            hideModal();
+            updateUI(); // The correct view is determined from the loaded gameState
+            gameContainer.classList.remove('d-none'); // Show the game after the correct view is loaded
+        };
+
+        // Don't resume, start a new game
+        document.getElementById('resume-no-button').onclick = () => {
+            hideModal();
+            clearGameState();
+            gameState.state = 'setup';
+            updateUI();
+            gameContainer.classList.remove('d-none');
+        };
+
         nextButton.onclick = () => {
             const playerCount = parseInt(playerCountInput.value);
             const totalRounds = parseInt(totalRoundsInput.value);
@@ -666,8 +783,20 @@
         nextRoundButton.onclick = startRound;
         submitGuessButton.onclick = submitGuess;
 
-        // Start the initial setup view
-        updateUI();
+        // On page load, check for a saved game and show the correct view
+        document.addEventListener('DOMContentLoaded', () => {
+            loader.classList.add('d-none');
+            if (loadGameState()) {
+                // If a saved game exists, just show the resume modal.
+                // The updateUI will be called if the user clicks 'yes'.
+                resumeModal.classList.remove('d-none');
+            } else {
+                // If no game exists, set up the initial state and show the game container
+                gameState.state = 'setup';
+                updateUI();
+                gameContainer.classList.remove('d-none');
+            }
+        });
     </script>
 </body>
 </html>

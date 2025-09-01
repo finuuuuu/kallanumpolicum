@@ -153,15 +153,51 @@
             color: #e0e0e0;
             transition: background-color 0.3s, color 0.3s;
         }
+        
+        .loader-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #121212;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            transition: opacity 0.5s ease-out;
+            opacity: 1;
+        }
+
+        .loader-container.d-none {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+            color: #FFD700;
+            margin-bottom: 1rem;
+        }
+
     </style>
 </head>
 <body class="bg-dark text-light">
 
-    <div class="d-flex justify-content-end w-100 position-fixed top-0 end-0 p-3" style="max-width: 900px; left: 50%; transform: translateX(-50%); z-index: 100;">
-        <button id="new-game-button-top" class="btn btn-secondary">New Game</button>
+    <div id="loader" class="loader-container">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p>Loading game...</p>
     </div>
 
-    <div id="game-container" class="game-container">
+    <div id="game-container" class="game-container d-none">
+        <div class="d-flex justify-content-end w-100 position-fixed top-0 end-0 p-3" style="max-width: 900px; left: 50%; transform: translateX(-50%); z-index: 100;">
+            <button id="new-game-button-top" class="btn btn-secondary">New Game</button>
+        </div>
+
         <!-- Main title -->
         <h1 class="mb-2 fs-2 fs-md-1">Kallanum Policum</h1>
         <p class="text-center text-secondary mb-4">A game of King, Police, Thief, and Queen!</p>
@@ -267,6 +303,9 @@
         const resumeModal = document.getElementById('resume-modal');
         const playerTurnInfo = document.getElementById('player-turn-info');
         const guessPrompt = document.getElementById('guess-prompt');
+        const loader = document.getElementById('loader');
+        const gameContainer = document.getElementById('game-container');
+
 
         const playerCountInput = document.getElementById('playerCount');
         const totalRoundsInput = document.getElementById('totalRounds');
@@ -337,7 +376,6 @@
         }
 
         function assignCharacters(playerCount) {
-            const roles = [];
             
             // Base roles and points
             const baseRoles = [
@@ -621,6 +659,11 @@
         }
 
         function updateUI() {
+            setupView.classList.add('d-none');
+            namesView.classList.add('d-none');
+            gamePlayView.classList.add('d-none');
+            scoreboardView.classList.add('d-none');
+
             playerTurnInfo.classList.add('d-none');
             document.getElementById('guess-view').classList.add('d-none');
             
@@ -686,7 +729,7 @@
                     break;
             }
         }
-
+        
         // Event listeners
         document.getElementById('modal-ok-button').onclick = hideModal;
         
@@ -699,22 +742,26 @@
         document.getElementById('confirm-yes-button').onclick = () => {
              hideModal();
              clearGameState(); // Clear state before starting a new game
-             switchView('setup-view');
+             gameState.state = 'setup';
+             updateUI();
+             gameContainer.classList.remove('d-none');
         }
         document.getElementById('confirm-no-button').onclick = hideModal;
         
         // Resume game button
         document.getElementById('resume-yes-button').onclick = () => {
             hideModal();
-            // Game state is already loaded, just update the UI
-            updateUI();
+            updateUI(); // The correct view is determined from the loaded gameState
+            gameContainer.classList.remove('d-none'); // Show the game after the correct view is loaded
         };
 
         // Don't resume, start a new game
         document.getElementById('resume-no-button').onclick = () => {
             hideModal();
             clearGameState();
-            switchView('setup-view');
+            gameState.state = 'setup';
+            updateUI();
+            gameContainer.classList.remove('d-none');
         };
 
         nextButton.onclick = () => {
@@ -736,12 +783,18 @@
         nextRoundButton.onclick = startRound;
         submitGuessButton.onclick = submitGuess;
 
-        // On page load, check for a saved game
+        // On page load, check for a saved game and show the correct view
         document.addEventListener('DOMContentLoaded', () => {
+            loader.classList.add('d-none');
             if (loadGameState()) {
+                // If a saved game exists, just show the resume modal.
+                // The updateUI will be called if the user clicks 'yes'.
                 resumeModal.classList.remove('d-none');
             } else {
+                // If no game exists, set up the initial state and show the game container
+                gameState.state = 'setup';
                 updateUI();
+                gameContainer.classList.remove('d-none');
             }
         });
     </script>

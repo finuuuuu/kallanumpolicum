@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kallanum Policum Game</title>
+    <!-- Use a simple, clean font for better readability -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a1a2e; /* Deep purple background */
+            color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 1rem;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background-color: #2a2a4c;
+            border-radius: 1.5rem; /* More rounded corners */
+            padding: 2rem;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1, h2 {
+            text-align: center;
+            font-weight: 700;
+            color: #d1b3ff;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 1rem;
+        }
+
+        .btn {
+            background-color: #5d5d81;
+            color: #ffffff;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            border-radius: 9999px;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn:hover {
+            background-color: #7a7a9a;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .card {
+            background-color: #3b3b5c;
+            border-radius: 1rem;
+            cursor: pointer;
+            aspect-ratio: 2 / 3;
+            perspective: 1000px;
+            position: relative;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+        
+        .card.is-flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 1rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0.5rem;
+            text-align: center;
+        }
+
+        .card-front {
+            background-color: #6a6a99;
+            color: #ffffff;
+            transition: transform 0.6s;
+        }
+
+        .card-back {
+            background-color: #5d5d81;
+            color: #d1b3ff;
+            transform: rotateY(180deg);
+            padding: 1rem;
+        }
+
+        .card-back.chor {
+            background-color: #e53e3e;
+        }
+        .card-back.mantri {
+            background-color: #38a169;
+        }
+        .card-back.raja {
+            background-color: #ffc200;
+        }
+
+        .message-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #1a1a2e;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            text-align: center;
+            animation: zoomIn 0.3s ease-out;
+        }
+
+        @keyframes zoomIn {
+            from { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+            to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 999;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans">
+
+    <div id="game-container" class="container">
+        <!-- Main title -->
+        <h1 class="text-4xl">Kallanum Policum</h1>
+        <p class="text-center text-sm text-gray-400 mt-2 mb-4">A game of King, Minister, Thief, and Police!</p>
+
+        <!-- Initial setup view -->
+        <div id="setup-view" class="flex flex-col items-center space-y-4">
+            <h2 class="text-xl">Start a New Game</h2>
+            <div class="flex flex-col items-center w-full max-w-sm">
+                <label for="playerCount" class="block text-sm font-medium text-gray-300">Enter Number of Players (4-10)</label>
+                <input type="number" id="playerCount" value="4" min="4" max="10" class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-gray-200 focus:outline-none focus:ring focus:ring-purple-500 transition-colors">
+            </div>
+            <button id="next-button" class="btn">Next</button>
+            <button id="load-game-button" class="btn">Load Saved Game</button>
+        </div>
+
+        <!-- Load game ID view -->
+        <div id="load-view" class="hidden flex flex-col items-center space-y-4">
+            <h2 class="text-xl">Enter Game ID</h2>
+            <div class="flex flex-col items-center w-full max-w-sm">
+                <input type="text" id="gameIdInput" placeholder="Enter Game ID" class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-gray-200 focus:outline-none focus:ring focus:ring-purple-500 transition-colors">
+            </div>
+            <button id="join-game-button" class="btn">Join Game</button>
+        </div>
+
+        <!-- Player names view -->
+        <div id="names-view" class="hidden flex flex-col items-center space-y-4">
+            <h2 class="text-xl">Enter Player Names</h2>
+            <div id="player-inputs" class="space-y-3 w-full max-w-sm"></div>
+            <button id="start-game-button" class="btn">Start Game</button>
+        </div>
+        
+        <!-- Game play view -->
+        <div id="game-play-view" class="hidden flex flex-col items-center space-y-4">
+            <h2 id="round-info" class="text-xl">Round 1</h2>
+            <div id="game-board" class="card-grid"></div>
+            <div id="game-actions" class="flex items-center space-x-4">
+                <button id="reveal-card-button" class="btn">Reveal Your Card</button>
+                <button id="make-guess-button" class="btn hidden">Make a Guess</button>
+            </div>
+            <div id="guess-view" class="hidden flex flex-col items-center space-y-4">
+                <p>Choose the Thief:</p>
+                <select id="guess-select" class="px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-gray-200 focus:outline-none focus:ring focus:ring-purple-500 transition-colors w-full max-w-xs"></select>
+                <button id="submit-guess-button" class="btn">Submit Guess</button>
+            </div>
+        </div>
+
+        <!-- Scoreboard view -->
+        <div id="scoreboard-view" class="hidden flex flex-col items-center space-y-4">
+            <h2 class="text-xl">Scores</h2>
+            <table class="min-w-full divide-y divide-gray-700 rounded-lg overflow-hidden">
+                <thead class="bg-gray-700">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Player</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Score</th>
+                    </tr>
+                </thead>
+                <tbody id="scores-table-body" class="bg-gray-800 divide-y divide-gray-700">
+                    <!-- Scores will be inserted here by JavaScript -->
+                </tbody>
+            </table>
+            <button id="next-round-button" class="btn">Start Next Round</button>
+            <button id="new-game-button" class="btn">Start New Game</button>
+        </div>
+
+        <!-- Game ID and User ID display -->
+        <div class="mt-8 text-center text-xs text-gray-500">
+            <p id="user-id-display">User ID: N/A</p>
+            <p id="game-id-display" class="mt-1">Game ID: N/A</p>
+        </div>
+        
+        <!-- Custom message box -->
+        <div id="message-modal" class="hidden">
+            <div id="modal-overlay" class="modal-overlay"></div>
+            <div id="message-box" class="message-box">
+                <p id="message-text" class="text-lg font-semibold mb-4"></p>
+                <div class="flex justify-center space-x-4">
+                    <button id="modal-ok-button" class="btn">OK</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confirmation modal -->
+        <div id="confirm-modal" class="hidden">
+            <div id="modal-overlay-confirm" class="modal-overlay"></div>
+            <div id="confirm-box" class="message-box">
+                <p id="confirm-text" class="text-lg font-semibold mb-4"></p>
+                <div class="flex justify-center space-x-4">
+                    <button id="confirm-yes-button" class="btn bg-red-600 hover:bg-red-700">Yes</button>
+                    <button id="confirm-no-button" class="btn">No</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // Set log level to debug for better console output
+        setLogLevel('Debug');
+
+        // Global variables provided by the environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let app;
+        let db;
+        let auth;
+        let userId = null;
+
+        let gameState = {};
+        let gameId = null;
+        let unsubscribe = null;
+        let currentPlayerId = null;
+
+        // UI elements
+        const setupView = document.getElementById('setup-view');
+        const loadView = document.getElementById('load-view');
+        const namesView = document.getElementById('names-view');
+        const gamePlayView = document.getElementById('game-play-view');
+        const scoreboardView = document.getElementById('scoreboard-view');
+        const messageModal = document.getElementById('message-modal');
+        const confirmModal = document.getElementById('confirm-modal');
+        const gameIdDisplay = document.getElementById('game-id-display');
+        const userIdDisplay = document.getElementById('user-id-display');
+
+        const playerCountInput = document.getElementById('playerCount');
+        const nextButton = document.getElementById('next-button');
+        const loadGameButton = document.getElementById('load-game-button');
+        const joinGameButton = document.getElementById('join-game-button');
+        const startGameButton = document.getElementById('start-game-button');
+        const revealCardButton = document.getElementById('reveal-card-button');
+        const makeGuessButton = document.getElementById('make-guess-button');
+        const submitGuessButton = document.getElementById('submit-guess-button');
+        const nextRoundButton = document.getElementById('next-round-button');
+        const newGameButton = document.getElementById('new-game-button');
+        const gameBoard = document.getElementById('game-board');
+        const playerInputsDiv = document.getElementById('player-inputs');
+        const guessSelect = document.getElementById('guess-select');
+        const roundInfo = document.getElementById('round-info');
+        const scoresTableBody = document.getElementById('scores-table-body');
+        
+        // Utility functions
+        function showModal(message, isConfirm = false) {
+            const modal = isConfirm ? confirmModal : messageModal;
+            const messageText = modal.querySelector('p');
+            messageText.textContent = message;
+            modal.classList.remove('hidden');
+        }
+
+        function hideModal() {
+            messageModal.classList.add('hidden');
+            confirmModal.classList.add('hidden');
+        }
+        
+        // Firestore and game logic
+        async function initializeFirebase() {
+            if (!firebaseConfig) {
+                showModal("Firebase config not found. The app cannot run.");
+                return;
+            }
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        userIdDisplay.textContent = `User ID: ${userId}`;
+                        console.log("Firebase Auth State Changed. User ID:", userId);
+                        // Check for saved game only after auth is ready
+                        if (localStorage.getItem('currentGameId')) {
+                            showModal("A game is in progress. Do you want to load it?", true);
+                            confirmModal.querySelector('#confirm-yes-button').onclick = () => {
+                                hideModal();
+                                loadGame(localStorage.getItem('currentGameId'));
+                            };
+                            confirmModal.querySelector('#confirm-no-button').onclick = () => {
+                                hideModal();
+                            };
+                        }
+                    } else {
+                         // Fallback to anonymous sign-in if initial token is not available.
+                         const userCred = await signInAnonymously(auth);
+                         userId = userCred.user.uid;
+                         userIdDisplay.textContent = `User ID: ${userId} (Anonymous)`;
+                         console.log("Signed in anonymously. User ID:", userId);
+                    }
+                });
+
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Error initializing Firebase:", error);
+                showModal("Failed to initialize Firebase. " + error.message);
+            }
+        }
+
+        function switchView(viewId) {
+            setupView.classList.add('hidden');
+            loadView.classList.add('hidden');
+            namesView.classList.add('hidden');
+            gamePlayView.classList.add('hidden');
+            scoreboardView.classList.add('hidden');
+            document.getElementById(viewId).classList.remove('hidden');
+        }
+
+        function createPlayerInputs(count) {
+            playerInputsDiv.innerHTML = '';
+            for (let i = 0; i < count; i++) {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.placeholder = `Player ${i + 1} Name`;
+                input.value = `Player ${i + 1}`;
+                input.className = "block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-gray-200 focus:outline-none focus:ring focus:ring-purple-500 transition-colors";
+                input.setAttribute('data-player-index', i);
+                playerInputsDiv.appendChild(input);
+            }
+        }
+        
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function assignCharacters(playerCount) {
+            const characters = [
+                { role: 'Raja', points: 1000 },
+                { role: 'Mantri', points: 500 },
+                { role: 'Chor', points: 0 },
+                { role: 'Rani', points: 300 }
+            ];
+
+            // Add Pattaalam for more players
+            if (playerCount > 4) {
+                const numPattaalam = playerCount - 4;
+                for (let i = 0; i < numPattaalam; i++) {
+                    characters.push({ role: 'Pattaalam', points: 100 });
+                }
+            }
+
+            shuffleArray(characters);
+            return characters;
+        }
+
+        function renderCards() {
+            gameBoard.innerHTML = '';
+            gameState.players.forEach((player, index) => {
+                const card = document.createElement('div');
+                card.className = `card ${player.isRevealed ? 'is-flipped' : ''}`;
+                card.dataset.playerId = index;
+
+                const front = document.createElement('div');
+                front.className = 'card-front';
+                front.textContent = `Card ${index + 1}`;
+
+                const back = document.createElement('div');
+                back.className = `card-back ${player.character.role.toLowerCase()}`;
+                back.innerHTML = `
+                    <p class="font-bold text-2xl">${player.character.role}</p>
+                    <p class="text-sm">(${player.name})</p>
+                `;
+                
+                card.appendChild(front);
+                card.appendChild(back);
+                gameBoard.appendChild(card);
+            });
+        }
+        
+        function renderScores() {
+            scoresTableBody.innerHTML = '';
+            const sortedPlayers = [...gameState.players].sort((a, b) => b.score - a.score);
+            sortedPlayers.forEach(player => {
+                const row = document.createElement('tr');
+                row.className = 'bg-gray-800 hover:bg-gray-700 transition-colors duration-200';
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-200">${player.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">${player.score}</td>
+                `;
+                scoresTableBody.appendChild(row);
+            });
+        }
+
+        async function saveGameState() {
+            if (!gameId) {
+                console.error("Game ID is not set. Cannot save state.");
+                showModal("Error: Cannot save game state. Game ID is missing.");
+                return;
+            }
+            try {
+                const gameDocRef = doc(db, `artifacts/${appId}/public/data/games`, gameId);
+                await setDoc(gameDocRef, gameState, { merge: true });
+                console.log("Game state saved to Firestore.");
+            } catch (e) {
+                console.error("Error saving game state: ", e);
+                showModal("Failed to save game state. " + e.message);
+            }
+        }
+        
+        async function loadGame(id) {
+            if (unsubscribe) {
+                unsubscribe(); // Detach from previous game
+            }
+            gameId = id;
+            localStorage.setItem('currentGameId', gameId);
+            gameIdDisplay.textContent = `Game ID: ${gameId}`;
+            
+            const gameDocRef = doc(db, `artifacts/${appId}/public/data/games`, gameId);
+            
+            try {
+                const gameDoc = await getDoc(gameDocRef);
+                if (!gameDoc.exists()) {
+                    showModal("Game not found. Please check the ID.");
+                    return;
+                }
+            } catch (e) {
+                showModal("Failed to load game. " + e.message);
+                return;
+            }
+            
+            // Set up real-time listener
+            unsubscribe = onSnapshot(gameDocRef, (doc) => {
+                if (doc.exists()) {
+                    gameState = doc.data();
+                    console.log("Real-time update received:", gameState);
+                    updateUI();
+                } else {
+                    console.log("Game was deleted.");
+                    showModal("This game has ended or been deleted.");
+                    localStorage.removeItem('currentGameId');
+                    switchView('setup-view');
+                }
+            });
+            console.log("Started real-time listener for game ID:", gameId);
+        }
+
+        async function createNewGame() {
+            if (unsubscribe) {
+                unsubscribe();
+            }
+            const newGameId = Math.random().toString(36).substring(2, 8);
+            gameId = newGameId;
+            localStorage.setItem('currentGameId', newGameId);
+            gameIdDisplay.textContent = `Game ID: ${newGameId}`;
+            
+            const players = [];
+            document.querySelectorAll('#player-inputs input').forEach(input => {
+                players.push({
+                    name: input.value,
+                    score: 0,
+                    character: null,
+                    isRevealed: false
+                });
+            });
+
+            gameState = {
+                players,
+                round: 1,
+                state: 'names_entered',
+                characterAssignments: null,
+                guessResult: null,
+                guessingPlayerIndex: null
+            };
+
+            await saveGameState();
+            showModal(`Game created! Share this ID with your friends to play: ${newGameId}`);
+        }
+
+        async function startRound() {
+            const characterAssignments = assignCharacters(gameState.players.length);
+            gameState.players.forEach((player, index) => {
+                player.character = characterAssignments[index];
+                player.isRevealed = false; // Reset for the new round
+            });
+
+            // Find the Mantri/Police
+            const mantriIndex = gameState.players.findIndex(p => p.character.role === 'Mantri');
+            if (mantriIndex !== -1) {
+                currentPlayerId = mantriIndex;
+            } else {
+                 // Fallback if no Mantri, maybe for more complex rules
+                 currentPlayerId = Math.floor(Math.random() * gameState.players.length);
+            }
+
+            gameState.state = 'playing';
+            gameState.guessingPlayerIndex = currentPlayerId;
+            gameState.guessResult = null;
+            await saveGameState();
+        }
+
+        async function handleCardClick(event) {
+            const card = event.currentTarget;
+            const playerId = parseInt(card.dataset.playerId);
+            const player = gameState.players[playerId];
+            
+            if (player.isRevealed) {
+                return;
+            }
+            
+            player.isRevealed = true;
+            await saveGameState();
+            
+            // Allow Mantri to see their card, then show the guess button
+            if (player.character.role === 'Mantri') {
+                setTimeout(() => {
+                    makeGuessButton.classList.remove('hidden');
+                }, 1000);
+            }
+        }
+        
+        async function submitGuess() {
+            const mantri = gameState.players[gameState.guessingPlayerIndex];
+            const thiefIndex = parseInt(guessSelect.value);
+            const guessedPlayer = gameState.players[thiefIndex];
+            
+            if (guessedPlayer.character.role === 'Chor') {
+                // Mantri gets points for a correct guess
+                mantri.score += mantri.character.points;
+                gameState.guessResult = `${mantri.name} guessed correctly! The thief was ${guessedPlayer.name}.`;
+            } else {
+                // Mantri gets 0 points for an incorrect guess, and the guessed player does not get points.
+                gameState.guessResult = `${mantri.name} guessed incorrectly. The thief was ${gameState.players.find(p => p.character.role === 'Chor').name}.`;
+            }
+            
+            // All other players (Raja, Rani, Pattaalam) get their points regardless of the guess outcome
+            gameState.players.forEach(p => {
+                if (p.character.role === 'Raja') {
+                    p.score += 1000;
+                } else if (p.character.role === 'Rani') {
+                    p.score += 300;
+                } else if (p.character.role === 'Pattaalam') {
+                    p.score += 100;
+                }
+                // Chor always gets 0 points, so no action needed here.
+            });
+
+            gameState.state = 'round_over';
+            await saveGameState();
+        }
+
+        async function nextRound() {
+            gameState.round += 1;
+            gameState.state = 'playing';
+            await saveGameState();
+        }
+
+        async function startNewGame() {
+            if (unsubscribe) {
+                unsubscribe();
+            }
+            localStorage.removeItem('currentGameId');
+            switchView('setup-view');
+        }
+
+        function updateUI() {
+            switch (gameState.state) {
+                case 'setup':
+                    switchView('setup-view');
+                    break;
+                case 'names_entered':
+                    switchView('names-view');
+                    const numPlayers = gameState.players.length;
+                    playerInputsDiv.innerHTML = ''; // Clear previous inputs
+                    for (let i = 0; i < numPlayers; i++) {
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.placeholder = `Player ${i + 1} Name`;
+                        input.value = gameState.players[i].name;
+                        input.className = "block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-gray-200 focus:outline-none focus:ring focus:ring-purple-500 transition-colors";
+                        playerInputsDiv.appendChild(input);
+                    }
+                    startGameButton.onclick = async () => {
+                        const players = [];
+                        document.querySelectorAll('#player-inputs input').forEach(input => {
+                             players.push({
+                                 name: input.value,
+                                 score: 0,
+                                 character: null,
+                                 isRevealed: false
+                             });
+                        });
+                        gameState.players = players;
+                        gameState.state = 'playing_prep';
+                        await saveGameState();
+                        await startRound(); // Start the first round
+                    };
+                    break;
+                case 'playing':
+                case 'playing_prep':
+                    switchView('game-play-view');
+                    roundInfo.textContent = `Round ${gameState.round}`;
+                    renderCards();
+                    makeGuessButton.classList.add('hidden');
+                    guessSelect.innerHTML = '';
+                    
+                    const nonMantriPlayers = gameState.players.filter(p => p.character.role !== 'Mantri');
+                    nonMantriPlayers.forEach((player, index) => {
+                        const option = document.createElement('option');
+                        option.value = gameState.players.findIndex(p => p.name === player.name);
+                        option.textContent = player.name;
+                        guessSelect.appendChild(option);
+                    });
+                    
+                    const allCards = document.querySelectorAll('.card');
+                    allCards.forEach(card => card.onclick = handleCardClick);
+                    
+                    if (gameState.state === 'playing') {
+                        revealCardButton.classList.add('hidden');
+                        showModal(`The round has started! The Police is ${gameState.players[gameState.guessingPlayerIndex].name}. Everyone, reveal your card.`);
+                    } else {
+                        revealCardButton.classList.remove('hidden');
+                    }
+                    
+                    document.getElementById('make-guess-button').onclick = () => {
+                        document.getElementById('guess-view').classList.remove('hidden');
+                        document.getElementById('make-guess-button').classList.add('hidden');
+                        document.getElementById('reveal-card-button').classList.add('hidden');
+                    };
+                    document.getElementById('submit-guess-button').onclick = submitGuess;
+                    break;
+                case 'round_over':
+                    showModal(gameState.guessResult);
+                    switchView('scoreboard-view');
+                    renderScores();
+                    break;
+                default:
+                    console.log("Unknown game state:", gameState.state);
+                    break;
+            }
+        }
+
+        // Event listeners
+        document.getElementById('modal-ok-button').onclick = hideModal;
+        document.getElementById('new-game-button').onclick = () => showModal("Are you sure you want to start a new game? This will delete the current game.", true);
+        document.getElementById('confirm-yes-button').onclick = async () => {
+             hideModal();
+             await startNewGame();
+        }
+        document.getElementById('confirm-no-button').onclick = hideModal;
+        
+        nextButton.onclick = () => {
+            const playerCount = parseInt(playerCountInput.value);
+            if (playerCount < 4 || playerCount > 10) {
+                showModal("Please enter a number between 4 and 10.");
+                return;
+            }
+            createPlayerInputs(playerCount);
+            switchView('names-view');
+        };
+        
+        loadGameButton.onclick = () => {
+            switchView('load-view');
+        };
+        
+        joinGameButton.onclick = () => {
+            const id = document.getElementById('gameIdInput').value.trim();
+            if (id) {
+                loadGame(id);
+            } else {
+                showModal("Please enter a valid game ID.");
+            }
+        };
+
+        startGameButton.onclick = createNewGame;
+
+        nextRoundButton.onclick = async () => {
+             await nextRound();
+        };
+
+        // Initialize the app on window load
+        window.onload = initializeFirebase;
+    </script>
+</body>
+</html>

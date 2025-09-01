@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kallanum Policum Game</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" xintegrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <!-- Custom fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #121212; /* Dark black background */
+            color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 1rem;
+            box-sizing: border-box;
+        }
+
+        .game-container {
+            max-width: 900px;
+            width: 100%;
+            background-color: #1e1e1e; /* Slightly lighter black */
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1, h2 {
+            text-align: center;
+            font-weight: 700;
+            color: #FFD700; /* Gold color for headers */
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        
+        .card-game {
+            background-color: #2c2c2c;
+            border-radius: 1rem;
+            cursor: pointer;
+            width: 120px; /* Fixed width for demonstration */
+            aspect-ratio: 2 / 3;
+            perspective: 1000px;
+            position: relative;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+            border: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .card-game.is-flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 1rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 0.5rem;
+            text-align: center;
+        }
+
+        .card-front {
+            background-color: #4a4a4a; /* Lighter gray for card front */
+            color: #ffffff;
+        }
+
+        .card-back {
+            background-color: #3b3b3b; /* Slightly darker gray for card back */
+            color: #FFD700;
+            transform: rotateY(180deg);
+        }
+
+        .modal-custom {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content-custom {
+            background-color: #121212;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
+            text-align: center;
+            animation: zoomIn 0.3s ease-out;
+            max-width: 90%;
+            z-index: 10000;
+        }
+
+        .modal-success {
+            background-color: #28a745 !important;
+        }
+
+        .modal-failure {
+            background-color: #dc3545 !important;
+        }
+        
+        @keyframes zoomIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .btn-primary {
+            background-color: #121212;
+            border-color: #FFD700;
+            color: #FFD700;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .btn-primary:hover {
+            background-color: #FFD700;
+            color: #121212;
+        }
+
+        .btn-secondary {
+            background-color: #2c2c2c;
+            border-color: #4a4a4a;
+            color: #e0e0e0;
+            transition: background-color 0.3s, color 0.3s;
+        }
+    </style>
+</head>
+<body class="bg-dark text-light">
+
+    <div id="game-container" class="game-container">
+        <!-- Main title -->
+        <h1 class="mb-2 fs-2 fs-md-1">Kallanum Policum</h1>
+        <p class="text-center text-secondary mb-4">A game of King, Police, Thief, and Queen!</p>
+
+        <!-- Initial setup view -->
+        <div id="setup-view" class="d-flex flex-column align-items-center">
+            <h2 class="fs-4 mb-3">Start a New Game</h2>
+            <div class="w-100" style="max-width: 350px;">
+                <div class="mb-3">
+                    <label for="playerCount" class="form-label text-light">Number of Players (3-10)</label>
+                    <input type="number" id="playerCount" value="4" min="3" max="10" class="form-control form-control-dark bg-dark text-light border-0">
+                </div>
+                <div class="mb-4">
+                    <label for="totalRounds" class="form-label text-light">Number of Rounds (1-10)</label>
+                    <input type="number" id="totalRounds" value="3" min="1" max="10" class="form-control form-control-dark bg-dark text-light border-0">
+                </div>
+                <button id="next-button" class="btn btn-primary w-100">Next</button>
+            </div>
+        </div>
+
+        <!-- Player names view -->
+        <div id="names-view" class="d-none d-flex flex-column align-items-center">
+            <h2 class="fs-4 mb-3">Enter Player Names</h2>
+            <div id="player-inputs" class="w-100" style="max-width: 350px;"></div>
+            <button id="start-game-button" class="btn btn-primary mt-4 w-100" style="max-width: 350px;">Start Game</button>
+        </div>
+        
+        <!-- Game play view -->
+        <div id="game-play-view" class="d-none d-flex flex-column align-items-center">
+            <h2 id="round-info" class="mb-3">Round 1</h2>
+            <p id="player-turn-info" class="fs-5 text-secondary d-none"></p>
+            <div id="guess-view" class="d-none mt-4 w-100" style="max-width: 350px;">
+                <p id="guess-prompt" class="text-center">Choose the Thief:</p>
+                <select id="guess-select" class="form-select form-select-dark bg-dark text-light border-0 mb-3"></select>
+                <button id="submit-guess-button" class="btn btn-primary w-100">Submit Guess</button>
+            </div>
+            <div id="game-board" class="card-grid"></div>
+        </div>
+
+        <!-- Scoreboard view -->
+        <div id="scoreboard-view" class="d-none d-flex flex-column align-items-center w-100">
+            <h2 class="fs-4 mb-3">Scores</h2>
+            <div class="table-responsive w-100">
+                <table class="table table-dark table-striped table-hover rounded-3 overflow-hidden">
+                    <thead id="scores-table-head"></thead>
+                    <tbody id="scores-table-body"></tbody>
+                </table>
+            </div>
+            <button id="next-round-button" class="btn btn-primary mt-3 d-none">Start Next Round</button>
+            <button id="new-game-button" class="btn btn-secondary mt-3 d-none">Start New Game</button>
+        </div>
+
+        <!-- Custom message box -->
+        <div id="message-modal" class="modal-custom d-none">
+            <div class="modal-content-custom">
+                <p id="message-text" class="fs-5 fw-bold mb-4"></p>
+                <div class="d-flex justify-content-center">
+                    <button id="modal-ok-button" class="btn btn-primary">OK</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confirmation modal -->
+        <div id="confirm-modal" class="modal-custom d-none">
+            <div class="modal-content-custom">
+                <p id="confirm-text" class="fs-5 fw-bold mb-4"></p>
+                <div class="d-flex justify-content-center gap-3">
+                    <button id="confirm-yes-button" class="btn btn-danger">Yes</button>
+                    <button id="confirm-no-button" class="btn btn-primary">No</button>
+                </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" xintegrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+    <script>
+        // Global game state stored in memory
+        let gameState = {};
+        let currentPlayerIndex = 0;
+
+        // UI elements
+        const setupView = document.getElementById('setup-view');
+        const namesView = document.getElementById('names-view');
+        const gamePlayView = document.getElementById('game-play-view');
+        const scoreboardView = document.getElementById('scoreboard-view');
+        const messageModal = document.getElementById('message-modal');
+        const confirmModal = document.getElementById('confirm-modal');
+        const playerTurnInfo = document.getElementById('player-turn-info');
+        const guessPrompt = document.getElementById('guess-prompt');
+
+        const playerCountInput = document.getElementById('playerCount');
+        const totalRoundsInput = document.getElementById('totalRounds');
+        const nextButton = document.getElementById('next-button');
+        const startGameButton = document.getElementById('start-game-button');
+        const submitGuessButton = document.getElementById('submit-guess-button');
+        const nextRoundButton = document.getElementById('next-round-button');
+        const newGameButton = document.getElementById('new-game-button');
+        const gameBoard = document.getElementById('game-board');
+        const playerInputsDiv = document.getElementById('player-inputs');
+        const guessSelect = document.getElementById('guess-select');
+        const roundInfo = document.getElementById('round-info');
+        const scoresTableHead = document.getElementById('scores-table-head');
+        const scoresTableBody = document.getElementById('scores-table-body');
+        
+        // Utility functions
+        function showModal(message, isConfirm = false, isSuccess = null) {
+            const modal = isConfirm ? confirmModal : messageModal;
+            const messageText = modal.querySelector('p');
+            const modalContent = modal.querySelector('.modal-content-custom');
+
+            // Reset classes
+            modalContent.classList.remove('modal-success', 'modal-failure');
+
+            if (isSuccess === true) {
+                modalContent.classList.add('modal-success');
+            } else if (isSuccess === false) {
+                modalContent.classList.add('modal-failure');
+            }
+
+            messageText.textContent = message;
+            modal.classList.remove('d-none');
+        }
+
+        function hideModal() {
+            messageModal.classList.add('d-none');
+            confirmModal.classList.add('d-none');
+        }
+
+        function switchView(viewId) {
+            setupView.classList.add('d-none');
+            namesView.classList.add('d-none');
+            gamePlayView.classList.add('d-none');
+            scoreboardView.classList.add('d-none');
+            document.getElementById(viewId).classList.remove('d-none');
+        }
+
+        function createPlayerInputs(count) {
+            playerInputsDiv.innerHTML = '';
+            for (let i = 0; i < count; i++) {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.placeholder = `Player ${i + 1} Name`;
+                input.value = `Player ${i + 1}`;
+                input.className = "form-control mb-3 bg-dark text-light border-0";
+                input.setAttribute('data-player-index', i);
+                playerInputsDiv.appendChild(input);
+            }
+        }
+        
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function assignCharacters(playerCount) {
+            const characters = [];
+
+            // Base roles and points
+            const roles = [
+                { role: 'King', points: 1000 },
+                { role: 'Police', points: 500 },
+                { role: 'Thief', points: 0 }
+            ];
+
+            // Add Queen for 4 players
+            if (playerCount >= 4) {
+                roles.push({ role: 'Queen', points: 900 });
+            }
+
+            // Add Minister for 5 players
+            if (playerCount >= 5) {
+                roles.push({ role: 'Minister', points: 800 });
+            }
+
+            // Add Soldier for more than 5 players
+            if (playerCount > 5) {
+                const numSoldiers = playerCount - roles.length;
+                for (let i = 0; i < numSoldiers; i++) {
+                    roles.push({ role: 'Soldier', points: 700 });
+                }
+            }
+            
+            shuffleArray(roles);
+            return roles;
+        }
+
+        function renderCards() {
+            gameBoard.innerHTML = '';
+            gameState.players.forEach((player, index) => {
+                const card = document.createElement('div');
+                card.className = `card-game ${player.isRevealed ? 'is-flipped' : ''}`;
+                card.dataset.playerId = index;
+                if (!player.isRevealed && gameState.state === 'revealing' && index !== currentPlayerIndex) {
+                     card.classList.add('opacity-50', 'pe-none');
+                }
+
+                const front = document.createElement('div');
+                front.className = 'card-front';
+                front.textContent = player.name; // Use player's name here
+
+                const back = document.createElement('div');
+                back.className = `card-back`; // Removed role-based classes
+                back.innerHTML = `
+                    <p class="fw-bold fs-4 fs-sm-3">${player.character.role}</p>
+                    <p class="fs-6 text-sm">(${player.name})</p>
+                    <p class="fs-6 text-sm fw-light mt-1">(${player.character.points} points)</p>
+                `;
+                
+                card.appendChild(front);
+                card.appendChild(back);
+                gameBoard.appendChild(card);
+            });
+        }
+        
+        function renderScores() {
+            scoresTableHead.innerHTML = '';
+            scoresTableBody.innerHTML = '';
+
+            // Vertical scoreboard logic
+            // Header row: Player names
+            const headerRow = document.createElement('tr');
+            const roleHeader = document.createElement('th');
+            roleHeader.scope = "col";
+            roleHeader.className = "text-nowrap p-2 p-md-3";
+            roleHeader.textContent = "Player";
+            headerRow.appendChild(roleHeader);
+
+            gameState.players.forEach(player => {
+                const playerHeader = document.createElement('th');
+                playerHeader.scope = "col";
+                playerHeader.className = "text-nowrap p-2 p-md-3";
+                playerHeader.textContent = player.name;
+                headerRow.appendChild(playerHeader);
+            });
+            scoresTableHead.appendChild(headerRow);
+
+            // Body rows: Rounds and Total
+            for (let i = 0; i < gameState.roundScoresHistory.length; i++) {
+                const roundData = gameState.roundScoresHistory[i];
+                const roundRow = document.createElement('tr');
+                const roundCell = document.createElement('td');
+                roundCell.className = "fw-bold p-2 p-md-3";
+                roundCell.textContent = `Round ${roundData.round}`;
+                roundRow.appendChild(roundCell);
+
+                roundData.scores.forEach(score => {
+                    const scoreCell = document.createElement('td');
+                    scoreCell.className = "p-2 p-md-3";
+                    scoreCell.textContent = score;
+                    roundRow.appendChild(scoreCell);
+                });
+                scoresTableBody.appendChild(roundRow);
+            }
+            
+            // Total Score row
+            if (gameState.round === gameState.totalRounds) {
+                const totalRow = document.createElement('tr');
+                const totalTitleCell = document.createElement('td');
+                totalTitleCell.className = "fw-bold p-2 p-md-3";
+                totalTitleCell.textContent = "Total Score";
+                totalRow.appendChild(totalTitleCell);
+
+                gameState.players.forEach(player => {
+                    const totalScoreCell = document.createElement('td');
+                    totalScoreCell.className = "fw-bold p-2 p-md-3";
+                    totalScoreCell.textContent = player.score;
+                    totalRow.appendChild(totalScoreCell);
+                });
+                scoresTableBody.appendChild(totalRow);
+            }
+
+            // Adjust next/new game buttons based on round
+            if (gameState.round === gameState.totalRounds) {
+                nextRoundButton.classList.add('d-none');
+                newGameButton.classList.remove('d-none');
+            } else {
+                nextRoundButton.classList.remove('d-none');
+                newGameButton.classList.add('d-none');
+            }
+        }
+
+        function startNewGame() {
+            const playerCount = parseInt(playerCountInput.value);
+            const totalRounds = parseInt(totalRoundsInput.value);
+            const players = [];
+            document.querySelectorAll('#player-inputs input').forEach(input => {
+                players.push({
+                    name: input.value,
+                    score: 0,
+                    character: null,
+                    isRevealed: false
+                });
+            });
+
+            gameState = {
+                players,
+                round: 0,
+                totalRounds,
+                state: 'revealing',
+                guessResult: null,
+                roundScoresHistory: []
+            };
+
+            startRound();
+        }
+
+        function startRound() {
+            if (gameState.round >= gameState.totalRounds) {
+                // Game over, show final scores
+                gameState.state = 'game_over';
+                updateUI();
+                return;
+            }
+
+            gameState.round++;
+            const characterAssignments = assignCharacters(gameState.players.length);
+            gameState.players.forEach((player, index) => {
+                player.character = characterAssignments[index];
+                player.isRevealed = false; // Reset for the new round
+            });
+            
+            gameState.state = 'revealing';
+            currentPlayerIndex = 0;
+            gameState.guessResult = null;
+            
+            updateUI();
+            
+            showModal(`Round ${gameState.round}. Pass the phone to ${gameState.players[currentPlayerIndex].name} to reveal their card. Only they should look!`);
+        }
+
+        function handleCardClick(event) {
+            const card = event.currentTarget;
+            const playerId = parseInt(card.dataset.playerId);
+            const player = gameState.players[playerId];
+
+            if (gameState.state === 'revealing' && playerId === currentPlayerIndex) {
+                 player.isRevealed = true;
+                 renderCards();
+
+                 setTimeout(() => {
+                    card.classList.remove('is-flipped');
+                    player.isRevealed = false;
+                    currentPlayerIndex++;
+                    updateUI();
+                    if (currentPlayerIndex < gameState.players.length) {
+                        showModal(`OK, now pass the phone to ${gameState.players[currentPlayerIndex].name}.`);
+                    } else {
+                        // All players have revealed, now start the guessing phase
+                        gameState.state = 'guessing';
+                        updateUI();
+                        const police = gameState.players.find(p => p.character.role === 'Police');
+                        showModal(`All players have seen their roles. Pass the phone to the Police (${police.name}) to make a guess.`);
+                        document.getElementById('guess-view').classList.remove('d-none');
+                    }
+                 }, 2000); // Card stays flipped for 2 seconds
+            }
+        }
+        
+        function submitGuess() {
+            const police = gameState.players.find(p => p.character.role === 'Police');
+            const thiefIndex = parseInt(guessSelect.value);
+            const guessedPlayer = gameState.players[thiefIndex];
+            
+            const roundScores = new Array(gameState.players.length).fill(0);
+            let isCorrectGuess;
+            
+            if (guessedPlayer.character.role === 'Thief') {
+                const policeIndex = gameState.players.indexOf(police);
+                roundScores[policeIndex] += police.character.points;
+                gameState.guessResult = `${police.name} guessed correctly! The thief was ${guessedPlayer.name}.`;
+                isCorrectGuess = true;
+            } else {
+                const thief = gameState.players.find(p => p.character.role === 'Thief');
+                const thiefPlayerIndex = gameState.players.indexOf(thief);
+                roundScores[thiefPlayerIndex] += police.character.points;
+                gameState.guessResult = `${police.name} guessed incorrectly. The thief was ${thief.name}. The thief gains the police's points.`;
+                isCorrectGuess = false;
+            }
+            
+            // All other players get their points regardless of the guess outcome
+            gameState.players.forEach((p, index) => {
+                if (p.character.role === 'King') {
+                    roundScores[index] += p.character.points;
+                } else if (p.character.role === 'Queen') {
+                    roundScores[index] += p.character.points;
+                } else if (p.character.role === 'Minister') {
+                    roundScores[index] += p.character.points;
+                } else if (p.character.role === 'Soldier') {
+                    roundScores[index] += p.character.points;
+                }
+            });
+
+            // Store the round scores
+            gameState.roundScoresHistory.push({
+                round: gameState.round,
+                scores: roundScores
+            });
+            
+            // Update total scores
+            gameState.players.forEach((p, index) => {
+                p.score += roundScores[index];
+            });
+
+            gameState.state = 'round_over';
+            updateUI();
+
+            showModal(gameState.guessResult, false, isCorrectGuess);
+        }
+
+        function updateUI() {
+            playerTurnInfo.classList.add('d-none');
+            document.getElementById('guess-view').classList.add('d-none');
+            
+            switch (gameState.state) {
+                case 'setup':
+                    switchView('setup-view');
+                    break;
+                case 'names_entered':
+                    switchView('names-view');
+                    const numPlayers = parseInt(playerCountInput.value);
+                    createPlayerInputs(numPlayers);
+                    break;
+                case 'revealing':
+                    switchView('game-play-view');
+                    roundInfo.textContent = `Round ${gameState.round} of ${gameState.totalRounds}`;
+                    if (currentPlayerIndex < gameState.players.length) {
+                        playerTurnInfo.textContent = `It's ${gameState.players[currentPlayerIndex].name}'s turn.`;
+                        playerTurnInfo.classList.remove('d-none');
+                    }
+                    renderCards();
+                    document.querySelectorAll('.card-game').forEach(card => card.onclick = handleCardClick);
+                    break;
+                case 'guessing':
+                    switchView('game-play-view');
+                    roundInfo.textContent = `Round ${gameState.round} of ${gameState.totalRounds}`;
+                    
+                    const police = gameState.players.find(p => p.character.role === 'Police');
+                    if (police) {
+                        guessPrompt.textContent = `${police.name} Choose the Thief:`;
+                    }
+                    
+                    renderCards(); // Renders all cards face down
+                    document.getElementById('guess-view').classList.remove('d-none');
+                    
+                    // Populate guess select with all non-police players
+                    const nonPolicePlayers = gameState.players.filter(p => p.character.role !== 'Police');
+                    guessSelect.innerHTML = '';
+                    nonPolicePlayers.forEach(player => {
+                        const option = document.createElement('option');
+                        option.value = gameState.players.findIndex(p => p.name === player.name);
+                        option.textContent = player.name;
+                        guessSelect.appendChild(option);
+                    });
+                    
+                    document.querySelectorAll('.card-game').forEach(card => card.onclick = () => {}); // Disable clicks on cards
+                    break;
+                case 'round_over':
+                    gameState.players.forEach(p => p.isRevealed = true);
+                    renderCards(); // Reveal all cards
+                    setTimeout(() => {
+                        switchView('scoreboard-view');
+                        renderScores();
+                    }, 2000);
+                    break;
+                case 'game_over':
+                    showModal("Game Over! All rounds have been played.");
+                    switchView('scoreboard-view');
+                    renderScores();
+                    break;
+                default:
+                    console.log("Unknown game state:", gameState.state);
+                    break;
+            }
+        }
+
+        // Event listeners
+        document.getElementById('modal-ok-button').onclick = hideModal;
+        document.getElementById('new-game-button').onclick = () => showModal("Are you sure you want to start a new game? This will reset the scores.", true);
+        document.getElementById('confirm-yes-button').onclick = () => {
+             hideModal();
+             switchView('setup-view');
+        }
+        document.getElementById('confirm-no-button').onclick = hideModal;
+        
+        nextButton.onclick = () => {
+            const playerCount = parseInt(playerCountInput.value);
+            const totalRounds = parseInt(totalRoundsInput.value);
+            if (playerCount < 3 || playerCount > 10) {
+                showModal("Please enter a number between 3 and 10 for players.");
+                return;
+            }
+            if (totalRounds < 1 || totalRounds > 10) {
+                showModal("Please enter a number between 1 and 10 for rounds.");
+                return;
+            }
+            createPlayerInputs(playerCount);
+            switchView('names-view');
+        };
+        
+        startGameButton.onclick = startNewGame;
+        nextRoundButton.onclick = startRound;
+        submitGuessButton.onclick = submitGuess;
+
+        // Start the initial setup view
+        updateUI();
+    </script>
+</body>
+</html>

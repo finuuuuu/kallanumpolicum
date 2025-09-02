@@ -60,10 +60,10 @@
             aspect-ratio: 2 / 3;
             perspective: 1000px;
             position: relative;
-            transition: transform 0.6s;
+            transition: transform 0.6s, border 0.3s;
             transform-style: preserve-3d;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
-            border: none;
+            border: 3px solid transparent;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -71,6 +71,11 @@
         
         .card-game.is-flipped {
             transform: rotateY(180deg);
+        }
+
+        .card-game.selected-card {
+            border-color: #FFD700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
         }
 
         .card-front, .card-back {
@@ -181,7 +186,6 @@
             color: #FFD700;
             margin-bottom: 1rem;
         }
-
     </style>
 </head>
 <body class="bg-dark text-light">
@@ -229,12 +233,9 @@
         <div id="game-play-view" class="d-none d-flex flex-column align-items-center">
             <h2 id="round-info" class="mb-3">Round 1</h2>
             <p id="player-turn-info" class="fs-5 text-light d-none"></p>
-            <div id="guess-view" class="d-none mt-4 w-100" style="max-width: 350px;">
-                <p id="guess-prompt" class="text-center">Choose the Thief:</p>
-                <select id="guess-select" class="form-select form-select-dark bg-dark text-light border-0 mb-3"></select>
-                <button id="submit-guess-button" class="btn btn-primary w-100">Submit Guess</button>
-            </div>
+            <h3 id="guess-message" class="fs-5 text-light text-center d-none mt-3">Choose the Thief:</h3>
             <div id="game-board" class="card-grid"></div>
+            <button id="submit-guess-button" class="btn btn-primary mt-4 d-none">Submit Guess</button>
         </div>
 
         <!-- Scoreboard view -->
@@ -268,7 +269,6 @@
                     <button id="confirm-yes-button" class="btn btn-danger">Yes</button>
                     <button id="confirm-no-button" class="btn btn-primary">No</button>
                 </div>
-                </div>
             </div>
         </div>
 
@@ -291,6 +291,7 @@
         // Global game state stored in memory
         let gameState = {};
         let currentPlayerIndex = 0;
+        let selectedGuessId = null; // New variable to store the selected guess
         const localStorageKey = 'kallanumPolisumGameState';
 
         // UI elements
@@ -302,11 +303,9 @@
         const confirmModal = document.getElementById('confirm-modal');
         const resumeModal = document.getElementById('resume-modal');
         const playerTurnInfo = document.getElementById('player-turn-info');
-        const guessPrompt = document.getElementById('guess-prompt');
+        const guessMessage = document.getElementById('guess-message');
         const loader = document.getElementById('loader');
         const gameContainer = document.getElementById('game-container');
-
-
         const playerCountInput = document.getElementById('playerCount');
         const totalRoundsInput = document.getElementById('totalRounds');
         const nextButton = document.getElementById('next-button');
@@ -317,7 +316,6 @@
         const newGameTopButton = document.getElementById('new-game-button-top');
         const gameBoard = document.getElementById('game-board');
         const playerInputsDiv = document.getElementById('player-inputs');
-        const guessSelect = document.getElementById('guess-select');
         const roundInfo = document.getElementById('round-info');
         const scoresTableHead = document.getElementById('scores-table-head');
         const scoresTableBody = document.getElementById('scores-table-body');
@@ -327,8 +325,6 @@
             const modal = isConfirm ? confirmModal : messageModal;
             const messageText = modal.querySelector('p');
             const modalContent = modal.querySelector('.modal-content-custom');
-
-            // Reset classes
             modalContent.classList.remove('modal-success', 'modal-failure');
 
             if (isSuccess === true) {
@@ -376,25 +372,18 @@
         }
 
         function assignCharacters(playerCount) {
-            
-            // Base roles and points
             const baseRoles = [
                 { role: 'King', points: 1000 },
                 { role: 'Police', points: 500 },
                 { role: 'Thief', points: 0 }
             ];
 
-            // Add Queen for 4 players
             if (playerCount >= 4) {
                 baseRoles.push({ role: 'Queen', points: 900 });
             }
-
-            // Add Minister for 5 players
             if (playerCount >= 5) {
                 baseRoles.push({ role: 'Minister', points: 800 });
             }
-
-            // Add Soldier for more than 5 players
             if (playerCount > 5) {
                 const numSoldiers = playerCount - baseRoles.length;
                 for (let i = 0; i < numSoldiers; i++) {
@@ -418,10 +407,10 @@
 
                 const front = document.createElement('div');
                 front.className = 'card-front';
-                front.textContent = player.name; // Use player's name here
+                front.textContent = player.name;
 
                 const back = document.createElement('div');
-                back.className = `card-back`; // Removed role-based classes
+                back.className = `card-back`;
                 back.innerHTML = `
                     <p class="fw-bold fs-4 fs-sm-3">${player.character.role}</p>
                     <p class="fs-6 text-sm">(${player.name})</p>
@@ -438,8 +427,6 @@
             scoresTableHead.innerHTML = '';
             scoresTableBody.innerHTML = '';
 
-            // Vertical scoreboard logic
-            // Header row: Player names
             const headerRow = document.createElement('tr');
             const roleHeader = document.createElement('th');
             roleHeader.scope = "col";
@@ -456,7 +443,6 @@
             });
             scoresTableHead.appendChild(headerRow);
 
-            // Body rows: Rounds and Total
             for (let i = 0; i < gameState.roundScoresHistory.length; i++) {
                 const roundData = gameState.roundScoresHistory[i];
                 const roundRow = document.createElement('tr');
@@ -474,7 +460,6 @@
                 scoresTableBody.appendChild(roundRow);
             }
             
-            // Total Score row
             if (gameState.round === gameState.totalRounds) {
                 const totalRow = document.createElement('tr');
                 const totalTitleCell = document.createElement('td');
@@ -491,7 +476,6 @@
                 scoresTableBody.appendChild(totalRow);
             }
 
-            // Adjust next/new game buttons based on round
             if (gameState.round === gameState.totalRounds) {
                 nextRoundButton.classList.add('d-none');
                 newGameButton.classList.remove('d-none');
@@ -513,7 +497,7 @@
                     return true;
                 } catch (e) {
                     console.error("Error loading game state from localStorage:", e);
-                    localStorage.removeItem(localStorageKey); // Clear corrupted state
+                    localStorage.removeItem(localStorageKey);
                     return false;
                 }
             }
@@ -524,6 +508,7 @@
             localStorage.removeItem(localStorageKey);
             gameState = {};
             currentPlayerIndex = 0;
+            selectedGuessId = null;
         }
 
         function startNewGame() {
@@ -553,7 +538,6 @@
 
         function startRound() {
             if (gameState.round >= gameState.totalRounds) {
-                // Game over, show final scores
                 gameState.state = 'game_over';
                 updateUI();
                 return;
@@ -563,11 +547,12 @@
             const characterAssignments = assignCharacters(gameState.players.length);
             gameState.players.forEach((player, index) => {
                 player.character = characterAssignments[index];
-                player.isRevealed = false; // Reset for the new round
+                player.isRevealed = false;
             });
             
             gameState.state = 'revealing';
             currentPlayerIndex = 0;
+            selectedGuessId = null;
             gameState.guessResult = null;
             
             saveGameState();
@@ -579,37 +564,45 @@
         function handleCardClick(event) {
             const card = event.currentTarget;
             const playerId = parseInt(card.dataset.playerId);
-            const player = gameState.players[playerId];
 
             if (gameState.state === 'revealing' && playerId === currentPlayerIndex) {
-                 player.isRevealed = true;
-                 renderCards();
+                // Handle revealing a card
+                gameState.players[playerId].isRevealed = true;
+                renderCards();
 
-                 setTimeout(() => {
+                setTimeout(() => {
                     card.classList.remove('is-flipped');
-                    player.isRevealed = false;
+                    gameState.players[playerId].isRevealed = false;
                     currentPlayerIndex++;
                     saveGameState();
                     updateUI();
                     if (currentPlayerIndex < gameState.players.length) {
                         showModal(`OK, now pass the phone to ${gameState.players[currentPlayerIndex].name}.`);
                     } else {
-                        // All players have revealed, now start the guessing phase
                         gameState.state = 'guessing';
                         saveGameState();
                         updateUI();
                         const police = gameState.players.find(p => p.character.role === 'Police');
-                        showModal(`All players have seen their roles. Pass the phone to the Police (${police.name}) to make a guess.`);
-                        document.getElementById('guess-view').classList.remove('d-none');
+                        showModal(`All players have seen their roles. Pass the phone to the Police (${police.name}) to make a guess. Tap on the card you want to guess.`);
                     }
-                 }, 2000); // Card stays flipped for 2 seconds
+                }, 2000);
+            } else if (gameState.state === 'guessing') {
+                // Handle selecting a card for the guess
+                // Deselect any previously selected cards
+                document.querySelectorAll('.card-game').forEach(c => c.classList.remove('selected-card'));
+                
+                // Select the new card
+                card.classList.add('selected-card');
+                selectedGuessId = playerId;
+
+                // Show the submit button
+                submitGuessButton.classList.remove('d-none');
             }
         }
         
         function submitGuess() {
             const police = gameState.players.find(p => p.character.role === 'Police');
-            const thiefIndex = parseInt(guessSelect.value);
-            const guessedPlayer = gameState.players[thiefIndex];
+            const guessedPlayer = gameState.players[selectedGuessId];
             
             const roundScores = new Array(gameState.players.length).fill(0);
             let isCorrectGuess;
@@ -627,26 +620,17 @@
                 isCorrectGuess = false;
             }
             
-            // All other players get their points regardless of the guess outcome
             gameState.players.forEach((p, index) => {
-                if (p.character.role === 'King') {
-                    roundScores[index] += p.character.points;
-                } else if (p.character.role === 'Queen') {
-                    roundScores[index] += p.character.points;
-                } else if (p.character.role === 'Minister') {
-                    roundScores[index] += p.character.points;
-                } else if (p.character.role === 'Soldier') {
+                if (p.character.role !== 'Police' && p.character.role !== 'Thief') {
                     roundScores[index] += p.character.points;
                 }
             });
 
-            // Store the round scores
             gameState.roundScoresHistory.push({
                 round: gameState.round,
                 scores: roundScores
             });
             
-            // Update total scores
             gameState.players.forEach((p, index) => {
                 p.score += roundScores[index];
             });
@@ -665,7 +649,8 @@
             scoreboardView.classList.add('d-none');
 
             playerTurnInfo.classList.add('d-none');
-            document.getElementById('guess-view').classList.add('d-none');
+            submitGuessButton.classList.add('d-none');
+            guessMessage.classList.add('d-none');
             
             switch (gameState.state) {
                 case 'setup':
@@ -689,30 +674,15 @@
                 case 'guessing':
                     switchView('game-play-view');
                     roundInfo.textContent = `Round ${gameState.round} of ${gameState.totalRounds}`;
-                    
                     const police = gameState.players.find(p => p.character.role === 'Police');
-                    if (police) {
-                        guessPrompt.textContent = `${police.name} Choose the Thief:`;
-                    }
-                    
-                    renderCards(); // Renders all cards face down
-                    document.getElementById('guess-view').classList.remove('d-none');
-                    
-                    // Populate guess select with all non-police players
-                    const nonPolicePlayers = gameState.players.filter(p => p.character.role !== 'Police');
-                    guessSelect.innerHTML = '';
-                    nonPolicePlayers.forEach(player => {
-                        const option = document.createElement('option');
-                        option.value = gameState.players.findIndex(p => p.name === player.name);
-                        option.textContent = player.name;
-                        guessSelect.appendChild(option);
-                    });
-                    
-                    document.querySelectorAll('.card-game').forEach(card => card.onclick = () => {}); // Disable clicks on cards
+                    guessMessage.textContent = `${police.name} Choose the Thief:`;
+                    guessMessage.classList.remove('d-none');
+                    renderCards();
+                    document.querySelectorAll('.card-game').forEach(card => card.onclick = handleCardClick);
                     break;
                 case 'round_over':
                     gameState.players.forEach(p => p.isRevealed = true);
-                    renderCards(); // Reveal all cards
+                    renderCards();
                     setTimeout(() => {
                         switchView('scoreboard-view');
                         renderScores();
@@ -732,36 +702,27 @@
         
         // Event listeners
         document.getElementById('modal-ok-button').onclick = hideModal;
-        
-        // "New Game" button from the scoreboard
         newGameButton.onclick = () => showModal("Are you sure you want to start a new game? This will reset the scores.", true);
-        
-        // "New Game" button from the top of the page
         newGameTopButton.onclick = () => showModal("Are you sure you want to start a new game? This will reset the scores.", true);
 
         document.getElementById('confirm-yes-button').onclick = () => {
              hideModal();
-             clearGameState(); // Clear state before starting a new game
+             clearGameState();
              gameState.state = 'setup';
              updateUI();
-             gameContainer.classList.remove('d-none');
         }
         document.getElementById('confirm-no-button').onclick = hideModal;
         
-        // Resume game button
         document.getElementById('resume-yes-button').onclick = () => {
             hideModal();
-            updateUI(); // The correct view is determined from the loaded gameState
-            gameContainer.classList.remove('d-none'); // Show the game after the correct view is loaded
+            updateUI();
         };
 
-        // Don't resume, start a new game
         document.getElementById('resume-no-button').onclick = () => {
             hideModal();
             clearGameState();
             gameState.state = 'setup';
             updateUI();
-            gameContainer.classList.remove('d-none');
         };
 
         nextButton.onclick = () => {
@@ -783,19 +744,20 @@
         nextRoundButton.onclick = startRound;
         submitGuessButton.onclick = submitGuess;
 
-        // On page load, check for a saved game and show the correct view
         document.addEventListener('DOMContentLoaded', () => {
-            loader.classList.add('d-none');
-            if (loadGameState()) {
-                // If a saved game exists, just show the resume modal.
-                // The updateUI will be called if the user clicks 'yes'.
+            const hasSavedGame = loadGameState();
+            
+            if (hasSavedGame) {
                 resumeModal.classList.remove('d-none');
             } else {
-                // If no game exists, set up the initial state and show the game container
                 gameState.state = 'setup';
                 updateUI();
-                gameContainer.classList.remove('d-none');
             }
+            
+            setTimeout(() => {
+                loader.classList.add('d-none');
+                gameContainer.classList.remove('d-none');
+            }, 500);
         });
     </script>
 </body>

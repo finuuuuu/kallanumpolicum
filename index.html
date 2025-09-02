@@ -204,7 +204,7 @@
 
         <!-- Main title -->
         <h1 class="mb-2 fs-2 fs-md-1">Kallanum Policum</h1>
-        <p class="text-center text-light mb-4">A game of King, Police, Thief, and Queen!</p>
+        <p class="text-center text-secondary mb-4">A game of King, Police, Thief, and Queen!</p>
 
         <!-- Initial setup view -->
         <div id="setup-view" class="d-flex flex-column align-items-center">
@@ -232,15 +232,17 @@
         <!-- Game play view -->
         <div id="game-play-view" class="d-none d-flex flex-column align-items-center">
             <h2 id="round-info" class="mb-3">Round 1</h2>
-            <p id="player-turn-info" class="fs-5 text-light d-none"></p>
+            <p id="player-turn-info" class="fs-5 text-secondary d-none"></p>
             <h3 id="guess-message" class="fs-5 text-light text-center d-none mt-3">Choose the Thief:</h3>
             <div id="game-board" class="card-grid"></div>
             <button id="submit-guess-button" class="btn btn-primary mt-4 d-none">Submit Guess</button>
         </div>
 
-        <!-- Scoreboard view -->
+        <!-- Scoreboard view now includes the revealed cards -->
         <div id="scoreboard-view" class="d-none d-flex flex-column align-items-center w-100">
-            <h2 class="fs-4 mb-3">Scores</h2>
+            <h2 class="fs-4 mb-3">Round Results</h2>
+            <div id="revealed-cards-container" class="card-grid"></div>
+            <h2 class="fs-4 mb-3 mt-5">Scores</h2>
             <div class="table-responsive w-100">
                 <table class="table table-dark table-striped table-hover rounded-3 overflow-hidden">
                     <thead id="scores-table-head"></thead>
@@ -315,6 +317,7 @@
         const newGameButton = document.getElementById('new-game-button');
         const newGameTopButton = document.getElementById('new-game-button-top');
         const gameBoard = document.getElementById('game-board');
+        const revealedCardsContainer = document.getElementById('revealed-cards-container');
         const playerInputsDiv = document.getElementById('player-inputs');
         const roundInfo = document.getElementById('round-info');
         const scoresTableHead = document.getElementById('scores-table-head');
@@ -395,9 +398,14 @@
             return baseRoles;
         }
 
-        function renderCards() {
-            gameBoard.innerHTML = '';
+        function renderCards(container) {
+            container.innerHTML = '';
             gameState.players.forEach((player, index) => {
+                // Do not render the police card during the guessing phase
+                if (gameState.state === 'guessing' && player.character.role === 'Police') {
+                    return;
+                }
+
                 const card = document.createElement('div');
                 card.className = `card-game ${player.isRevealed ? 'is-flipped' : ''}`;
                 card.dataset.playerId = index;
@@ -419,7 +427,7 @@
                 
                 card.appendChild(front);
                 card.appendChild(back);
-                gameBoard.appendChild(card);
+                container.appendChild(card);
             });
         }
         
@@ -568,7 +576,7 @@
             if (gameState.state === 'revealing' && playerId === currentPlayerIndex) {
                 // Handle revealing a card
                 gameState.players[playerId].isRevealed = true;
-                renderCards();
+                renderCards(gameBoard);
 
                 setTimeout(() => {
                     card.classList.remove('is-flipped');
@@ -635,11 +643,10 @@
                 p.score += roundScores[index];
             });
 
+            // Change state to 'round_over' and update UI to reveal all cards
             gameState.state = 'round_over';
             saveGameState();
             updateUI();
-
-            showModal(gameState.guessResult, false, isCorrectGuess);
         }
 
         function updateUI() {
@@ -668,7 +675,7 @@
                         playerTurnInfo.textContent = `It's ${gameState.players[currentPlayerIndex].name}'s turn.`;
                         playerTurnInfo.classList.remove('d-none');
                     }
-                    renderCards();
+                    renderCards(gameBoard);
                     document.querySelectorAll('.card-game').forEach(card => card.onclick = handleCardClick);
                     break;
                 case 'guessing':
@@ -677,16 +684,17 @@
                     const police = gameState.players.find(p => p.character.role === 'Police');
                     guessMessage.textContent = `${police.name} Choose the Thief:`;
                     guessMessage.classList.remove('d-none');
-                    renderCards();
+                    renderCards(gameBoard); // This will now render all cards *except* the police's.
                     document.querySelectorAll('.card-game').forEach(card => card.onclick = handleCardClick);
                     break;
                 case 'round_over':
+                    // Reveal all cards and then show the scoreboard
+                    switchView('scoreboard-view');
                     gameState.players.forEach(p => p.isRevealed = true);
-                    renderCards();
-                    setTimeout(() => {
-                        switchView('scoreboard-view');
-                        renderScores();
-                    }, 2000);
+                    renderCards(revealedCardsContainer);
+                    renderScores();
+                    document.querySelectorAll('.card-game').forEach(card => card.onclick = null); // Disable clicks
+                    showModal(gameState.guessResult, false, gameState.guessResult.includes('correctly'));
                     break;
                 case 'game_over':
                     showModal("Game Over! All rounds have been played.");
@@ -696,6 +704,9 @@
                     break;
                 default:
                     console.log("Unknown game state:", gameState.state);
+                    // Handle unknown state by resetting to setup
+                    gameState.state = 'setup';
+                    updateUI();
                     break;
             }
         }
